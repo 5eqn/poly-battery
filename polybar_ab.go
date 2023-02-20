@@ -65,7 +65,6 @@ func main() {
 			if flagdebug {
 				fmt.Printf("%s:\n", battery)
 				fmt.Printf("Bat%d:\n", i)
-				fmt.Printf("  state: %v %f\n", battery.State, battery.State)
 			}
 
 			switch battery.State {
@@ -95,17 +94,31 @@ func main() {
 				notify_send("Battery low!", body, 1)
 			}
 
+			var dist float64
+			if battery.State == 3 {
+				dist = battery.Full - battery.Current
+			} else {
+				dist = battery.Current
+			}
+
+			var minute float64
+			if battery.ChargeRate > 0 {
+				minute = dist / battery.ChargeRate * 60
+			} else {
+				minute = 0
+			}
+
 			if flagdebug {
-				fmt.Printf("  Charge percent: %.2f \n", percent)
+				fmt.Printf("  Charge percent: %.0f \n", percent)
 				fmt.Printf("  Sleep sec: %v \n", 10)
 				fmt.Printf("  Time: %v \n", time.Now())
 			}
 
 			if flagsimple {
-				fmt.Printf("%.2f\n", percent)
+				fmt.Printf("%.0f\n", percent)
 			}
 			if flagpolybar {
-				polybar_out(percent, battery.State)
+				polybar_out(percent, minute, battery.State)
 			}
 			if flagonce {
 				os.Exit(0)
@@ -161,108 +174,44 @@ func notify_send(summary, body string, urg int) {
 	}
 }
 
-func polybar_out(val float64, state battery.State) {
+func polybar_out(val float64, minute float64, state battery.State) {
 	if flagdebug {
 		fmt.Printf("Debug polybar: val=%v, state=%v\n", val, state)
 	}
 
 	bat_icons := []string{
-		"\xef\x95\xb9",
-		"\xef\x95\xba",
-		"\xef\x95\xbb",
-		"\xef\x95\xbc",
-		"\xef\x95\xbd",
-		"\xef\x95\xbe",
-		"\xef\x95\xbf",
-		"\xef\x96\x80",
-		"\xef\x96\x81",
-		"\xef\x95\xb8",
-		"\xef\x95\xb8", //When charge percent euqall 100 or more
+		"",
+		"",
 	}
-	color_default := "DFDFDF"
-	color := get_color(val)
+	color_default := "C4C7C5"
+	color_charge := "61C766"
+	color_idle := "EC7875"
 
 	switch state {
 	// Not charging
 	case 0:
 		level := val / 10
-		fmt.Printf("%%{T%d}%%{F#%v} %s %%{F#%v}%%{T-}%.2f%%\n", flagfont, "00DDFF", bat_icons[int(level)], color_default, val)
+		fmt.Printf("%%{T%d}%%{F#%v} %s %%{F#%v}%%{T-}%.0f%% %.0fm\n", flagfont, color_idle, bat_icons[0], color_default, val, minute)
 		if flagdebug {
 			fmt.Printf("Polybar discharge pict: %v\n", int(level))
 		}
 	// Empty
 	case 1:
-		fmt.Printf("%%{T%d}%%{F#%v} %v %%{F#%v}%%{T-}%.2f%%\n", flagfont, color, bat_icons[0], color_default, val)
+		fmt.Printf("%%{T%d}%%{F#%v} %v %%{F#%v}%%{T-}%.0f%% %.0fm\n", flagfont, color_idle, bat_icons[0], color_default, val, minute)
 	// Full
 	case 2:
-		fmt.Printf("%%{T%d}%%{F#%v} %v %%{F#%v}%%{T-}%.2f%%\n", flagfont, color, bat_icons[9], color_default, val)
+		fmt.Printf("%%{T%d}%%{F#%v} %v %%{F#%v}%%{T-}%.0f%% %.0fm\n", flagfont, color_idle, bat_icons[0], color_default, val, minute)
 	// Unknown, Charging
 	case 3:
-		for i := 0; i < 10; i++ {
-			fmt.Printf("%%{T%d}%%{F#%v} %s %%{F#%v}%%{T-}%.2f%%\n", flagfont, color, bat_icons[i], color_default, val)
-			time.Sleep(100 * time.Millisecond)
-		}
+		fmt.Printf("%%{T%d}%%{F#%v} %s %%{F#%v}%%{T-}%.0f%% %.0fm\n", flagfont, color_charge, bat_icons[1], color_default, val, minute)
 	// Discharging
 	case 4:
 		level := val / 10
-		fmt.Printf("%%{T%d}%%{F#%v} %s %%{F#%v}%%{T-}%.2f%%\n", flagfont, color, bat_icons[int(level)], color_default, val)
+		fmt.Printf("%%{T%d}%%{F#%v} %s %%{F#%v}%%{T-}%.0f%% %.0fm\n", flagfont, color_idle, bat_icons[0], color_default, val, minute)
 		if flagdebug {
 			fmt.Printf("Polybar discharge pict: %v\n", int(level))
 		}
 	}
-}
-
-func get_color(val float64) string {
-	var color string
-
-	switch {
-	case val <= 5.0:
-		color = "FF0000"
-	case val <= 10.0:
-		color = "FF1A00"
-	case val <= 15.0:
-		color = "FF3500"
-	case val <= 20.0:
-		color = "FF5000"
-	case val <= 25.0:
-		color = "FF6B00"
-	case val <= 30.0:
-		color = "FF8600"
-	case val <= 35.0:
-		color = "FFA100"
-	case val <= 40.0:
-		color = "FFBB00"
-	case val <= 45.0:
-		color = "FFD600"
-	case val <= 50.0:
-		color = "FFF100"
-	case val <= 55.0:
-		color = "F1FF00"
-	case val <= 60.0:
-		color = "D6FF00"
-	case val <= 65.0:
-		color = "BBFF00"
-	case val <= 70.0:
-		color = "A1FF00"
-	case val <= 75.0:
-		color = "86FF00"
-	case val <= 80.0:
-		color = "6BFF00"
-	case val <= 85.0:
-		color = "50FF00"
-	case val <= 90.0:
-		color = "35FF00"
-	case val <= 95.0:
-		color = "1AFF00"
-	case val <= 100.0:
-		color = "00FF00"
-	}
-
-	if flagdebug {
-		fmt.Printf("Selected color: %v", color)
-	}
-
-	return color
 }
 
 func waitBat() {
@@ -274,7 +223,7 @@ func waitBat() {
 				fmt.Println("Could not find battery!")
 			}
 			if flagpolybar {
-				polybar_out(0, 4)
+				polybar_out(0, 0, 4)
 			}
 			if flagonce {
 				os.Exit(0)
