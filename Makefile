@@ -10,6 +10,9 @@ all: build strip install
 build:
 	go build -ldflags "-X main.version=$(VERSION)" -o $$(pwd)/$(BINNAME)
 
+makepkg:
+
+
 install:
 	install -D -m 755 -o root -g root $(BINNAME) $(DESTDIR)$(BINPREFIX)/$(BINNAME)
 
