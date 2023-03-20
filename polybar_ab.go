@@ -66,6 +66,9 @@ func main() {
 				fmt.Printf("%s:\n", battery)
 				fmt.Printf("Bat%d:\n", i)
 			}
+			if battery.Current == 0 {
+				continue
+			}
 
 			switch battery.State {
 			case 0:
